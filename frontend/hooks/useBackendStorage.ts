@@ -6,7 +6,7 @@ export function useBackendStorage(authToken: string | null) {
     if (!authToken) {
       throw new Error('Not authenticated');
     }
-    return backend.with({ auth: `Bearer ${authToken}` });
+    return backend.with({ auth: { authorization: authToken } });
   };
 
   const savePost = async (post: Post): Promise<Post> => {

@@ -1,4 +1,4 @@
-import { api, APIError, Header } from "encore.dev/api";
+import { api, APIError, Header, Gateway } from "encore.dev/api";
 import { authHandler } from "encore.dev/auth";
 import { secret } from "encore.dev/config";
 import { SQLDatabase } from "encore.dev/storage/sqldb";
@@ -44,7 +44,8 @@ const auth = authHandler<AuthParams, AuthData>(
   }
 );
 
-export default auth;
+// Configure the API gateway to use the auth handler
+export const gateway = new Gateway({ authHandler: auth });
 
 // Register endpoint
 export interface RegisterRequest {
