@@ -2,6 +2,7 @@ import { api, APIError, Header, Gateway } from "encore.dev/api";
 import { authHandler } from "encore.dev/auth";
 import { secret } from "encore.dev/config";
 import { SQLDatabase } from "encore.dev/storage/sqldb";
+import { getAuthData } from "~encore/auth";
 import * as bcrypt from "bcrypt";
 import { sign, verify } from "jsonwebtoken";
 
@@ -175,11 +176,8 @@ export interface UserInfo {
 export const me = api<void, UserInfo>(
   { auth: true, expose: true, method: "GET", path: "/auth/me" },
   async () => {
-    const authData = auth.data();
-    if (!authData) {
-      throw APIError.unauthenticated("not authenticated");
-    }
-
+    const authData = getAuthData()!;
+    
     return {
       id: authData.userID,
       email: authData.email,
