@@ -26,6 +26,12 @@ export function LoadModal({ posts, autosavedPost, onLoad, onDelete, onClose }: L
     return text.substring(0, maxLength) + '...';
   };
 
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -54,7 +60,7 @@ export function LoadModal({ posts, autosavedPost, onLoad, onDelete, onClose }: L
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-semibold text-gray-900 font-inter">
-                          {post.title || 'Untitled Post'}
+                          {truncateText(stripHtml(post.content) || 'Untitled Post', 50)}
                         </h3>
                         {post.isAutosave && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 font-inter">
@@ -74,7 +80,7 @@ export function LoadModal({ posts, autosavedPost, onLoad, onDelete, onClose }: L
                       
                       <p className="text-gray-600 text-sm mb-2 font-inter">
                         {truncateText(
-                          post.content.replace(/<[^>]*>/g, '') || 'No content',
+                          stripHtml(post.content) || 'No content',
                           100
                         )}
                       </p>

@@ -15,7 +15,6 @@ export function PostModal({ post, onClose }: PostModalProps) {
     return tmp.textContent || tmp.innerText || '';
   };
 
-  const displayTitle = post.title || 'Sample Post';
   const displayContent = stripHtml(post.content) || 'This is a sample post to show how your content will look when expanded.';
 
   // Generate random engagement numbers
@@ -50,11 +49,10 @@ export function PostModal({ post, onClose }: PostModalProps) {
         {/* Content */}
         <div className="p-4 max-h-[60vh] overflow-y-auto">
           <div className="mb-4">
-            <p className="text-gray-900 font-inter leading-relaxed">
-              <span className="font-semibold">{displayTitle}</span>
-              {displayTitle && displayContent && ' '}
-              <span>{displayContent}</span>
-            </p>
+            <div 
+              className="text-gray-900 font-inter leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: post.content || displayContent }}
+            />
           </div>
           
           {post.coverImage && (

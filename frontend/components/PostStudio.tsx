@@ -34,8 +34,7 @@ export default function PostStudio() {
 
     autosaveTimeoutRef.current = setTimeout(() => {
       const currentContent = JSON.stringify(currentPost);
-      const isEmpty = !currentPost.title.trim() && 
-                     !currentPost.content.replace(/<[^>]*>/g, '').trim() && 
+      const isEmpty = !currentPost.content.replace(/<[^>]*>/g, '').trim() && 
                      !currentPost.coverImage;
 
       if (!isEmpty && currentContent !== lastContentRef.current) {

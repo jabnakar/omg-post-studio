@@ -20,9 +20,8 @@ export function PostCard({ post, onClick, isLive = false }: PostCardProps) {
     return text.substring(0, maxLength) + '...';
   };
 
-  const displayTitle = post.title || (isLive ? 'Write a headline...' : 'Sample Post');
   const bodyText = stripHtml(post.content);
-  const displayBody = bodyText || (isLive ? 'Start writing your post content...' : 'This is a sample post to show how your content will look in the feed.');
+  const displayBody = bodyText || (isLive ? "What's on your mind? Write your post here..." : 'This is a sample post to show how your content will look in the feed.');
 
   // Generate random engagement numbers
   const likes = Math.floor(Math.random() * 500) + 10;
@@ -54,11 +53,9 @@ export function PostCard({ post, onClick, isLive = false }: PostCardProps) {
       <div className="px-4 pb-3">
         <div className="mb-3">
           <p className="text-gray-900 font-inter leading-relaxed">
-            <span className="font-semibold">{truncateText(displayTitle, 60)}</span>
-            {displayTitle && displayBody && ' '}
             <span className="line-clamp-3">
-              {truncateText(displayBody, 120)}
-              {displayBody.length > 120 && (
+              {truncateText(displayBody, 200)}
+              {displayBody.length > 200 && (
                 <span className="text-gray-500 ml-1">... See more</span>
               )}
             </span>

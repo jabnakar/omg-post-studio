@@ -10,19 +10,10 @@ interface EditorProps {
 
 export function Editor({ post, onChange }: EditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const headlineRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
 
   // Update content only when post changes from outside (not from user input)
-  useEffect(() => {
-    if (headlineRef.current && !isUpdatingRef.current) {
-      if (headlineRef.current.textContent !== post.title) {
-        headlineRef.current.textContent = post.title;
-      }
-    }
-  }, [post.title]);
-
   useEffect(() => {
     if (bodyRef.current && !isUpdatingRef.current) {
       if (bodyRef.current.innerHTML !== post.content) {
@@ -86,16 +77,6 @@ export function Editor({ post, onChange }: EditorProps) {
           }
         }
       }
-    }
-  };
-
-  const handleHeadlineChange = () => {
-    if (headlineRef.current) {
-      isUpdatingRef.current = true;
-      onChange({ title: headlineRef.current.textContent || '' });
-      setTimeout(() => {
-        isUpdatingRef.current = false;
-      }, 0);
     }
   };
 
@@ -227,28 +208,16 @@ export function Editor({ post, onChange }: EditorProps) {
           </div>
         )}
 
-        {/* Headline */}
-        <div
-          ref={headlineRef}
-          contentEditable
-          suppressContentEditableWarning
-          className="text-3xl font-bold text-[#101214] mb-6 outline-none font-baskerville leading-tight empty:before:content-[attr(data-placeholder)] empty:before:text-[#6b7280] empty:before:pointer-events-none"
-          style={{ minHeight: '1.2em' }}
-          onInput={handleHeadlineChange}
-          onPaste={handlePaste}
-          data-placeholder="Write a headline..."
-        />
-
-        {/* Body */}
+        {/* Post Content */}
         <div
           ref={bodyRef}
           contentEditable
           suppressContentEditableWarning
-          className="text-lg text-[#101214] leading-relaxed outline-none font-baskerville empty:before:content-[attr(data-placeholder)] empty:before:text-[#6b7280] empty:before:pointer-events-none"
-          style={{ minHeight: '200px' }}
+          className="text-lg text-[#101214] leading-relaxed outline-none font-inter empty:before:content-[attr(data-placeholder)] empty:before:text-[#6b7280] empty:before:pointer-events-none"
+          style={{ minHeight: '300px' }}
           onInput={handleBodyChange}
           onPaste={handlePaste}
-          data-placeholder="Start writing your amazing content here..."
+          data-placeholder="What's on your mind? Write your post here..."
         />
       </div>
     </div>
