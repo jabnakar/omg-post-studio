@@ -1,4 +1,4 @@
-import { api, APIError } from "encore.dev/api";
+import { api, APIError, Header } from "encore.dev/api";
 import { secret } from "encore.dev/config";
 import { createClient } from "@supabase/supabase-js";
 
@@ -110,11 +110,15 @@ export interface UserInfo {
   email: string;
 }
 
+interface MeRequest {
+  authorization: Header<"Authorization">;
+}
+
 // Gets the current user information
-export const me = api<void, UserInfo>(
+export const me = api<MeRequest, UserInfo>(
   { expose: true, method: "GET", path: "/auth/me" },
-  async (_, { headers }) => {
-    const authHeader = headers.authorization;
+  async (req) => {
+    const authHeader = req.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       throw APIError.unauthenticated("missing or invalid authorization header");
     }

@@ -1,4 +1,4 @@
-import { api, APIError } from "encore.dev/api";
+import { api, APIError, Header } from "encore.dev/api";
 import { secret } from "encore.dev/config";
 import { createClient } from "@supabase/supabase-js";
 
@@ -41,6 +41,7 @@ export interface Post {
 export interface CreatePostRequest {
   content: string;
   coverImage?: string | null;
+  authorization: Header<"Authorization">;
 }
 
 // Update post request
@@ -48,6 +49,7 @@ export interface UpdatePostRequest {
   id: string;
   content?: string;
   coverImage?: string | null;
+  authorization: Header<"Authorization">;
 }
 
 // List posts response
@@ -55,11 +57,15 @@ export interface ListPostsResponse {
   posts: Post[];
 }
 
+interface ListPostsRequest {
+  authorization: Header<"Authorization">;
+}
+
 // Creates a new post
 export const create = api<CreatePostRequest, Post>(
   { expose: true, method: "POST", path: "/posts" },
-  async (req, { headers }) => {
-    const userId = await getUserFromToken(headers.authorization);
+  async (req) => {
+    const userId = await getUserFromToken(req.authorization);
 
     if (!req.content?.trim()) {
       throw APIError.invalidArgument("content is required");
@@ -92,10 +98,10 @@ export const create = api<CreatePostRequest, Post>(
 );
 
 // Lists all posts for the current user
-export const list = api<void, ListPostsResponse>(
+export const list = api<ListPostsRequest, ListPostsResponse>(
   { expose: true, method: "GET", path: "/posts" },
-  async (_, { headers }) => {
-    const userId = await getUserFromToken(headers.authorization);
+  async (req) => {
+    const userId = await getUserFromToken(req.authorization);
 
     const supabase = getSupabase();
 
@@ -124,8 +130,8 @@ export const list = api<void, ListPostsResponse>(
 // Updates an existing post
 export const update = api<UpdatePostRequest, Post>(
   { expose: true, method: "PUT", path: "/posts/:id" },
-  async (req, { headers }) => {
-    const userId = await getUserFromToken(headers.authorization);
+  async (req) => {
+    const userId = await getUserFromToken(req.authorization);
 
     const supabase = getSupabase();
 
@@ -180,11 +186,16 @@ export const update = api<UpdatePostRequest, Post>(
   }
 );
 
+interface RemovePostRequest {
+  id: string;
+  authorization: Header<"Authorization">;
+}
+
 // Deletes a post
-export const remove = api<{ id: string }, void>(
+export const remove = api<RemovePostRequest, void>(
   { expose: true, method: "DELETE", path: "/posts/:id" },
-  async (req, { headers }) => {
-    const userId = await getUserFromToken(headers.authorization);
+  async (req) => {
+    const userId = await getUserFromToken(req.authorization);
 
     const supabase = getSupabase();
 
@@ -200,11 +211,17 @@ export const remove = api<{ id: string }, void>(
   }
 );
 
+interface AutosaveRequest {
+  content: string;
+  coverImage?: string | null;
+  authorization: Header<"Authorization">;
+}
+
 // Saves autosave data
-export const autosave = api<CreatePostRequest, { success: boolean }>(
+export const autosave = api<AutosaveRequest, { success: boolean }>(
   { expose: true, method: "POST", path: "/posts/autosave" },
-  async (req, { headers }) => {
-    const userId = await getUserFromToken(headers.authorization);
+  async (req) => {
+    const userId = await getUserFromToken(req.authorization);
 
     if (!req.content?.trim()) {
       return { success: true }; // Skip empty content
@@ -235,11 +252,15 @@ interface GetAutosaveResponse {
   post?: Post;
 }
 
+interface GetAutosaveRequest {
+  authorization: Header<"Authorization">;
+}
+
 // Gets autosave data
-export const getAutosave = api<void, GetAutosaveResponse>(
+export const getAutosave = api<GetAutosaveRequest, GetAutosaveResponse>(
   { expose: true, method: "GET", path: "/posts/autosave" },
-  async (_, { headers }) => {
-    const userId = await getUserFromToken(headers.authorization);
+  async (req) => {
+    const userId = await getUserFromToken(req.authorization);
 
     const supabase = getSupabase();
 
