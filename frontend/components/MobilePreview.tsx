@@ -23,12 +23,32 @@ export function MobilePreview({ currentPost, onCardClick }: MobilePreviewProps) 
     }
   };
 
-  // Insert user's post periodically in the feed
-  const feedPosts = [...ghostPosts];
-  const userPostIndex = Math.floor(feedPosts.length / 3);
-  if (currentPost.title || currentPost.content || currentPost.coverImage) {
-    feedPosts.splice(userPostIndex, 0, { ...currentPost, id: 'user-post-feed' });
-  }
+  // Create feed with user's post appearing every 4 posts
+  const createFeed = () => {
+    const feed: (Post & { isUserPost?: boolean })[] = [];
+    let ghostIndex = 0;
+
+    for (let i = 0; i < loadedPostsCount + Math.floor(loadedPostsCount / 4); i++) {
+      // Every 4th position (starting from position 3), insert user's post
+      if ((i + 1) % 4 === 0) {
+        feed.push({
+          ...currentPost,
+          id: `user-post-${Math.floor(i / 4)}`,
+          isUserPost: true
+        });
+      } else {
+        // Insert ghost post
+        if (ghostIndex < ghostPosts.length) {
+          feed.push(ghostPosts[ghostIndex]);
+          ghostIndex++;
+        }
+      }
+    }
+
+    return feed;
+  };
+
+  const feedPosts = createFeed();
 
   return (
     <div className="h-full bg-gray-100 p-4">
@@ -49,8 +69,11 @@ export function MobilePreview({ currentPost, onCardClick }: MobilePreviewProps) 
 
             {/* Feed Content */}
             <div className="h-[534px] overflow-y-auto" onScroll={handleScroll}>
-              {/* Live Card */}
-              <div className="border-b-4 border-blue-500">
+              {/* Live Card - Always at top with special highlighting */}
+              <div className="border-b-4 border-blue-500 bg-blue-50">
+                <div className="px-3 py-1 bg-blue-100 border-b border-blue-200">
+                  <p className="text-xs text-blue-700 font-inter font-medium">✨ Live Preview</p>
+                </div>
                 <PostCard
                   post={currentPost}
                   onClick={() => onCardClick(currentPost)}
@@ -58,13 +81,20 @@ export function MobilePreview({ currentPost, onCardClick }: MobilePreviewProps) 
                 />
               </div>
 
-              {/* Feed Posts */}
+              {/* Feed Posts with periodic user post */}
               {feedPosts.map((post, index) => (
-                <PostCard
-                  key={`${post.id}-${index}`}
-                  post={post}
-                  onClick={() => onCardClick(post)}
-                />
+                <div key={`${post.id}-${index}`} className="relative">
+                  {post.isUserPost && (
+                    <div className="px-3 py-1 bg-green-100 border-b border-green-200">
+                      <p className="text-xs text-green-700 font-inter font-medium">📝 Your Post in Feed</p>
+                    </div>
+                  )}
+                  <PostCard
+                    post={post}
+                    onClick={() => onCardClick(post)}
+                    isLive={post.isUserPost}
+                  />
+                </div>
               ))}
 
               {/* Loading Indicator */}
