@@ -114,9 +114,14 @@ export namespace auth {
         /**
          * Gets the current user information
          */
-        public async me(): Promise<ResponseType<typeof api_auth_auth_me>> {
+        public async me(params: RequestType<typeof api_auth_auth_me>): Promise<ResponseType<typeof api_auth_auth_me>> {
+            // Convert our params into the objects we need for the request
+            const headers = makeRecord<string, string>({
+                authorization: params.authorization,
+            })
+
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/auth/me`, {method: "GET", body: undefined})
+            const resp = await this.baseClient.callTypedAPI(`/auth/me`, {headers, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_auth_auth_me>
         }
 
@@ -162,49 +167,11 @@ export namespace posts {
          * Saves autosave data
          */
         public async autosave(params: RequestType<typeof api_posts_posts_autosave>): Promise<ResponseType<typeof api_posts_posts_autosave>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/posts/autosave`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_autosave>
-        }
+            // Convert our params into the objects we need for the request
+            const headers = makeRecord<string, string>({
+                authorization: params.authorization,
+            })
 
-        /**
-         * Creates a new post
-         */
-        public async create(params: RequestType<typeof api_posts_posts_create>): Promise<ResponseType<typeof api_posts_posts_create>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/posts`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_create>
-        }
-
-        /**
-         * Gets autosave data
-         */
-        public async getAutosave(): Promise<ResponseType<typeof api_posts_posts_getAutosave>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/posts/autosave`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_getAutosave>
-        }
-
-        /**
-         * Lists all posts for the current user
-         */
-        public async list(): Promise<ResponseType<typeof api_posts_posts_list>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/posts`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_list>
-        }
-
-        /**
-         * Deletes a post
-         */
-        public async remove(params: { id: string }): Promise<void> {
-            await this.baseClient.callTypedAPI(`/posts/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
-        }
-
-        /**
-         * Updates an existing post
-         */
-        public async update(params: RequestType<typeof api_posts_posts_update>): Promise<ResponseType<typeof api_posts_posts_update>> {
             // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
             const body: Record<string, any> = {
                 content:    params.content,
@@ -212,7 +179,87 @@ export namespace posts {
             }
 
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/posts/${encodeURIComponent(params.id)}`, {method: "PUT", body: JSON.stringify(body)})
+            const resp = await this.baseClient.callTypedAPI(`/posts/autosave`, {headers, method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_autosave>
+        }
+
+        /**
+         * Creates a new post
+         */
+        public async create(params: RequestType<typeof api_posts_posts_create>): Promise<ResponseType<typeof api_posts_posts_create>> {
+            // Convert our params into the objects we need for the request
+            const headers = makeRecord<string, string>({
+                authorization: params.authorization,
+            })
+
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                content:    params.content,
+                coverImage: params.coverImage,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/posts`, {headers, method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_create>
+        }
+
+        /**
+         * Gets autosave data
+         */
+        public async getAutosave(params: RequestType<typeof api_posts_posts_getAutosave>): Promise<ResponseType<typeof api_posts_posts_getAutosave>> {
+            // Convert our params into the objects we need for the request
+            const headers = makeRecord<string, string>({
+                authorization: params.authorization,
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/posts/autosave`, {headers, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_getAutosave>
+        }
+
+        /**
+         * Lists all posts for the current user
+         */
+        public async list(params: RequestType<typeof api_posts_posts_list>): Promise<ResponseType<typeof api_posts_posts_list>> {
+            // Convert our params into the objects we need for the request
+            const headers = makeRecord<string, string>({
+                authorization: params.authorization,
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/posts`, {headers, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_list>
+        }
+
+        /**
+         * Deletes a post
+         */
+        public async remove(params: RequestType<typeof api_posts_posts_remove>): Promise<void> {
+            // Convert our params into the objects we need for the request
+            const headers = makeRecord<string, string>({
+                authorization: params.authorization,
+            })
+
+            await this.baseClient.callTypedAPI(`/posts/${encodeURIComponent(params.id)}`, {headers, method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Updates an existing post
+         */
+        public async update(params: RequestType<typeof api_posts_posts_update>): Promise<ResponseType<typeof api_posts_posts_update>> {
+            // Convert our params into the objects we need for the request
+            const headers = makeRecord<string, string>({
+                authorization: params.authorization,
+            })
+
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                content:    params.content,
+                coverImage: params.coverImage,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/posts/${encodeURIComponent(params.id)}`, {headers, method: "PUT", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_posts_posts_update>
         }
     }
