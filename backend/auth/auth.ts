@@ -1,6 +1,6 @@
 import { api, APIError, Header } from "encore.dev/api";
 import { secret } from "encore.dev/config";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, AuthApiError } from "@supabase/supabase-js";
 
 // Supabase configuration
 const supabaseUrl = secret("SupabaseURL");
@@ -46,11 +46,16 @@ export const register = api<RegisterRequest, AuthResponse>(
     });
 
     if (error) {
+      if (error instanceof AuthApiError && error.status === 400) {
+        throw APIError.alreadyExists("A user with this email already exists.");
+      }
       throw APIError.internal(error.message);
     }
 
     if (!data.user || !data.session) {
-      throw APIError.internal("failed to create user");
+      // This happens if email confirmation is enabled in Supabase.
+      // The app flow expects immediate login, so we treat this as an error.
+      throw APIError.internal("Registration failed: user data or session not returned. Please disable email confirmation in your Supabase project settings.");
     }
 
     return {
@@ -87,11 +92,14 @@ export const login = api<LoginRequest, AuthResponse>(
     });
 
     if (error) {
-      throw APIError.unauthenticated("invalid email or password");
+      if (error instanceof AuthApiError && error.status === 400) {
+        throw APIError.unauthenticated("Invalid email or password.");
+      }
+      throw APIError.internal(error.message);
     }
 
     if (!data.user || !data.session) {
-      throw APIError.unauthenticated("invalid email or password");
+      throw APIError.unauthenticated("Invalid email or password.");
     }
 
     return {

@@ -75,6 +75,7 @@ CREATE POLICY "Users can delete their own autosaves" ON autosaves
 
 5. Go to Authentication > Settings and:
    - Enable email authentication
+   - **IMPORTANT**: Disable the "Confirm email" toggle. The application is designed for immediate login after registration.
    - Configure your site URL if needed
 
 ## Step 2: VPS Initial Setup
