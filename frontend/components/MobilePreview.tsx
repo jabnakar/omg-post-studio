@@ -10,7 +10,7 @@ interface MobilePreviewProps {
 
 export function MobilePreview({ currentPost, onCardClick }: MobilePreviewProps) {
   const [ghostPosts, setGhostPosts] = useState<Post[]>([]);
-  const [loadedPostsCount, setLoadedPostsCount] = useState(10);
+  const [loadedPostsCount, setLoadedPostsCount] = useState(15);
 
   useEffect(() => {
     setGhostPosts(generateGhostPosts(loadedPostsCount));
@@ -23,19 +23,22 @@ export function MobilePreview({ currentPost, onCardClick }: MobilePreviewProps) 
     }
   };
 
-  // Create feed with user's post appearing every 4 posts
+  // Create feed with user's post appearing at random intervals (3-7 posts)
   const createFeed = () => {
     const feed: (Post & { isUserPost?: boolean })[] = [];
     let ghostIndex = 0;
-
-    for (let i = 0; i < loadedPostsCount + Math.floor(loadedPostsCount / 4); i++) {
-      // Every 4th position (starting from position 3), insert user's post
-      if ((i + 1) % 4 === 0) {
+    let nextUserPostAt = Math.floor(Math.random() * 5) + 3; // First user post at position 3-7
+    
+    for (let i = 0; i < loadedPostsCount * 2; i++) {
+      if (i === nextUserPostAt) {
+        // Insert user's post
         feed.push({
           ...currentPost,
           id: `user-post-${Math.floor(i / 4)}`,
           isUserPost: true
         });
+        // Calculate next random position (3-7 posts from current position)
+        nextUserPostAt = i + Math.floor(Math.random() * 5) + 3;
       } else {
         // Insert ghost post
         if (ghostIndex < ghostPosts.length) {
@@ -81,20 +84,14 @@ export function MobilePreview({ currentPost, onCardClick }: MobilePreviewProps) 
                 />
               </div>
 
-              {/* Feed Posts with periodic user post */}
+              {/* Feed Posts with random user post placement */}
               {feedPosts.map((post, index) => (
-                <div key={`${post.id}-${index}`} className="relative">
-                  {post.isUserPost && (
-                    <div className="px-3 py-1 bg-green-100 border-b border-green-200">
-                      <p className="text-xs text-green-700 font-inter font-medium">📝 Your Post in Feed</p>
-                    </div>
-                  )}
-                  <PostCard
-                    post={post}
-                    onClick={() => onCardClick(post)}
-                    isLive={post.isUserPost}
-                  />
-                </div>
+                <PostCard
+                  key={`${post.id}-${index}`}
+                  post={post}
+                  onClick={() => onCardClick(post)}
+                  isLive={post.isUserPost}
+                />
               ))}
 
               {/* Loading Indicator */}

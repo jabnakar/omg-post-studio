@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Heart, MessageCircle, Share, Bookmark } from 'lucide-react';
+import { X, Heart, MessageCircle, Share, Bookmark, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Post } from '../types/Post';
 
@@ -18,62 +18,90 @@ export function PostModal({ post, onClose }: PostModalProps) {
   const displayTitle = post.title || 'Sample Post';
   const displayContent = stripHtml(post.content) || 'This is a sample post to show how your content will look when expanded.';
 
+  // Generate random engagement numbers
+  const likes = Math.floor(Math.random() * 500) + 10;
+  const comments = Math.floor(Math.random() * 50) + 1;
+  const shares = Math.floor(Math.random() * 20) + 1;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mr-3"></div>
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mr-3"></div>
             <div>
-              <div className="font-semibold text-sm text-gray-900 font-inter">Content Creator</div>
-              <div className="text-xs text-gray-500 font-inter">2 minutes ago</div>
+              <div className="flex items-center">
+                <span className="font-semibold text-[15px] text-gray-900 font-inter">Content Creator</span>
+                <span className="text-gray-500 mx-1">·</span>
+                <span className="text-gray-500 text-sm font-inter">2m</span>
+              </div>
+              <div className="text-xs text-gray-500 font-inter">Public</div>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <MoreHorizontal className="w-5 h-5 text-gray-500" />
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Content */}
         <div className="p-4 max-h-[60vh] overflow-y-auto">
-          <h2 className="text-lg font-bold text-gray-900 mb-3 font-inter leading-tight">
-            {displayTitle}
-          </h2>
+          <div className="mb-4">
+            <p className="text-gray-900 font-inter leading-relaxed">
+              <span className="font-semibold">{displayTitle}</span>
+              {displayTitle && displayContent && ' '}
+              <span>{displayContent}</span>
+            </p>
+          </div>
           
           {post.coverImage && (
             <img
               src={post.coverImage}
-              alt="Post cover"
+              alt="Post content"
               className="w-full rounded-lg mb-4"
             />
           )}
 
-          <div 
-            className="text-gray-700 leading-relaxed font-inter"
-            dangerouslySetInnerHTML={{ __html: post.content || displayContent }}
-          />
+          {/* Engagement Stats */}
+          <div className="py-3 border-t border-gray-100">
+            <div className="flex items-center justify-between text-gray-500">
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center -space-x-1">
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border border-white">
+                    <Heart className="w-3 h-3 text-white fill-current" />
+                  </div>
+                  <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border border-white">
+                    <Heart className="w-3 h-3 text-white fill-current" />
+                  </div>
+                </div>
+                <span className="text-sm font-inter">{likes}</span>
+              </div>
+              <div className="flex items-center space-x-4 text-sm font-inter">
+                <span>{comments} comments</span>
+                <span>{shares} shares</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2 text-gray-500 hover:text-red-500 cursor-pointer transition-colors">
-                <Heart className="w-5 h-5" />
-                <span className="text-sm font-inter">24</span>
-              </div>
-              <div className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 cursor-pointer transition-colors">
-                <MessageCircle className="w-5 h-5" />
-                <span className="text-sm font-inter">5</span>
-              </div>
-              <div className="text-gray-500 hover:text-green-500 cursor-pointer transition-colors">
-                <Share className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-gray-500 hover:text-yellow-500 cursor-pointer transition-colors">
-              <Bookmark className="w-5 h-5" />
-            </div>
+        {/* Action Buttons */}
+        <div className="border-t border-gray-100">
+          <div className="flex">
+            <button className="flex-1 flex items-center justify-center py-3 hover:bg-gray-50 transition-colors">
+              <Heart className="w-5 h-5 text-gray-600 mr-2" />
+              <span className="text-gray-700 font-inter font-medium">Like</span>
+            </button>
+            <button className="flex-1 flex items-center justify-center py-3 hover:bg-gray-50 transition-colors">
+              <MessageCircle className="w-5 h-5 text-gray-600 mr-2" />
+              <span className="text-gray-700 font-inter font-medium">Comment</span>
+            </button>
+            <button className="flex-1 flex items-center justify-center py-3 hover:bg-gray-50 transition-colors">
+              <Share className="w-5 h-5 text-gray-600 mr-2" />
+              <span className="text-gray-700 font-inter font-medium">Share</span>
+            </button>
           </div>
         </div>
       </div>
