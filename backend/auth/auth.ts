@@ -1,52 +1,14 @@
-import { api, APIError, Header, Gateway } from "encore.dev/api";
-import { authHandler } from "encore.dev/auth";
+import { api, APIError } from "encore.dev/api";
 import { secret } from "encore.dev/config";
-import { SQLDatabase } from "encore.dev/storage/sqldb";
-import { getAuthData } from "~encore/auth";
-import * as bcrypt from "bcrypt";
-import { sign, verify } from "jsonwebtoken";
+import { createClient } from "@supabase/supabase-js";
 
-// Shared database - define it only once
-const db = new SQLDatabase("app", {
-  migrations: "./migrations",
-});
+// Supabase configuration
+const supabaseUrl = secret("SupabaseURL");
+const supabaseServiceKey = secret("SupabaseServiceKey");
 
-// JWT secret
-const jwtSecret = secret("JWTSecret");
-
-// Auth data interface
-export interface AuthData {
-  userID: string;
-  email: string;
-}
-
-// Auth params interface
-interface AuthParams {
-  authorization?: Header<"Authorization">;
-}
-
-// Auth handler
-const auth = authHandler<AuthParams, AuthData>(
-  async (params) => {
-    const token = params.authorization?.replace("Bearer ", "");
-    if (!token) {
-      throw APIError.unauthenticated("missing token");
-    }
-
-    try {
-      const decoded = verify(token, jwtSecret()) as any;
-      return {
-        userID: decoded.userID,
-        email: decoded.email,
-      };
-    } catch (err) {
-      throw APIError.unauthenticated("invalid token");
-    }
-  }
-);
-
-// Configure the API gateway to use the auth handler
-export const gateway = new Gateway({ authHandler: auth });
+const getSupabase = () => {
+  return createClient(supabaseUrl(), supabaseServiceKey());
+};
 
 // Register endpoint
 export interface RegisterRequest {
@@ -75,41 +37,27 @@ export const register = api<RegisterRequest, AuthResponse>(
       throw APIError.invalidArgument("password must be at least 6 characters");
     }
 
-    // Check if user exists
-    const existingUser = await db.queryRow`
-      SELECT id FROM users WHERE email = ${email}
-    `;
+    const supabase = getSupabase();
 
-    if (existingUser) {
-      throw APIError.alreadyExists("user with this email already exists");
+    // Register user with Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw APIError.internal(error.message);
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await db.queryRow<{ id: string }>`
-      INSERT INTO users (email, password_hash, created_at)
-      VALUES (${email}, ${hashedPassword}, NOW())
-      RETURNING id
-    `;
-
-    if (!user) {
+    if (!data.user || !data.session) {
       throw APIError.internal("failed to create user");
     }
 
-    // Generate JWT token
-    const token = sign(
-      { userID: user.id, email },
-      jwtSecret(),
-      { expiresIn: "7d" }
-    );
-
     return {
-      token,
+      token: data.session.access_token,
       user: {
-        id: user.id,
-        email,
+        id: data.user.id,
+        email: data.user.email!,
       },
     };
   }
@@ -130,37 +78,27 @@ export const login = api<LoginRequest, AuthResponse>(
       throw APIError.invalidArgument("email and password are required");
     }
 
-    // Find user
-    const user = await db.queryRow<{
-      id: string;
-      email: string;
-      password_hash: string;
-    }>`
-      SELECT id, email, password_hash FROM users WHERE email = ${email}
-    `;
+    const supabase = getSupabase();
 
-    if (!user) {
+    // Sign in user with Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
       throw APIError.unauthenticated("invalid email or password");
     }
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
+    if (!data.user || !data.session) {
       throw APIError.unauthenticated("invalid email or password");
     }
-
-    // Generate JWT token
-    const token = sign(
-      { userID: user.id, email: user.email },
-      jwtSecret(),
-      { expiresIn: "7d" }
-    );
 
     return {
-      token,
+      token: data.session.access_token,
       user: {
-        id: user.id,
-        email: user.email,
+        id: data.user.id,
+        email: data.user.email!,
       },
     };
   }
@@ -174,13 +112,26 @@ export interface UserInfo {
 
 // Gets the current user information
 export const me = api<void, UserInfo>(
-  { auth: true, expose: true, method: "GET", path: "/auth/me" },
-  async () => {
-    const authData = getAuthData()!;
-    
+  { expose: true, method: "GET", path: "/auth/me" },
+  async (_, { headers }) => {
+    const authHeader = headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw APIError.unauthenticated("missing or invalid authorization header");
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const supabase = getSupabase();
+
+    // Get user from Supabase
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error || !data.user) {
+      throw APIError.unauthenticated("invalid token");
+    }
+
     return {
-      id: authData.userID,
-      email: authData.email,
+      id: data.user.id,
+      email: data.user.email!,
     };
   }
 );

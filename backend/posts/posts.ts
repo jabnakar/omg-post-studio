@@ -1,9 +1,32 @@
 import { api, APIError } from "encore.dev/api";
-import { SQLDatabase } from "encore.dev/storage/sqldb";
-import { getAuthData } from "~encore/auth";
+import { secret } from "encore.dev/config";
+import { createClient } from "@supabase/supabase-js";
 
-// Reference the same database that auth service created
-const db = SQLDatabase.named("app");
+// Supabase configuration
+const supabaseUrl = secret("SupabaseURL");
+const supabaseServiceKey = secret("SupabaseServiceKey");
+
+const getSupabase = () => {
+  return createClient(supabaseUrl(), supabaseServiceKey());
+};
+
+// Helper function to get user ID from token
+const getUserFromToken = async (authHeader: string | undefined) => {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    throw APIError.unauthenticated("missing or invalid authorization header");
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase.auth.getUser(token);
+
+  if (error || !data.user) {
+    throw APIError.unauthenticated("invalid token");
+  }
+
+  return data.user.id;
+};
 
 // Post interface
 export interface Post {
@@ -34,64 +57,65 @@ export interface ListPostsResponse {
 
 // Creates a new post
 export const create = api<CreatePostRequest, Post>(
-  { auth: true, expose: true, method: "POST", path: "/posts" },
-  async (req) => {
-    const auth = getAuthData()!;
+  { expose: true, method: "POST", path: "/posts" },
+  async (req, { headers }) => {
+    const userId = await getUserFromToken(headers.authorization);
 
     if (!req.content?.trim()) {
       throw APIError.invalidArgument("content is required");
     }
 
-    const post = await db.queryRow<{
-      id: string;
-      created_at: Date;
-      updated_at: Date;
-    }>`
-      INSERT INTO posts (user_id, content, cover_image, created_at, updated_at)
-      VALUES (${auth.userID}, ${req.content}, ${req.coverImage || null}, NOW(), NOW())
-      RETURNING id, created_at, updated_at
-    `;
+    const supabase = getSupabase();
 
-    if (!post) {
-      throw APIError.internal("failed to create post");
+    const { data, error } = await supabase
+      .from("posts")
+      .insert({
+        user_id: userId,
+        content: req.content,
+        cover_image: req.coverImage || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw APIError.internal("failed to create post: " + error.message);
     }
 
     return {
-      id: post.id,
-      content: req.content,
-      coverImage: req.coverImage || null,
-      createdAt: post.created_at,
-      updatedAt: post.updated_at,
+      id: data.id,
+      content: data.content,
+      coverImage: data.cover_image,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
     };
   }
 );
 
 // Lists all posts for the current user
 export const list = api<void, ListPostsResponse>(
-  { auth: true, expose: true, method: "GET", path: "/posts" },
-  async () => {
-    const auth = getAuthData()!;
+  { expose: true, method: "GET", path: "/posts" },
+  async (_, { headers }) => {
+    const userId = await getUserFromToken(headers.authorization);
 
-    const posts = await db.queryAll<{
-      id: string;
-      content: string;
-      cover_image: string | null;
-      created_at: Date;
-      updated_at: Date;
-    }>`
-      SELECT id, content, cover_image, created_at, updated_at
-      FROM posts
-      WHERE user_id = ${auth.userID}
-      ORDER BY updated_at DESC
-    `;
+    const supabase = getSupabase();
+
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      throw APIError.internal("failed to fetch posts: " + error.message);
+    }
 
     return {
-      posts: posts.map((post) => ({
+      posts: data.map((post) => ({
         id: post.id,
         content: post.content,
         coverImage: post.cover_image,
-        createdAt: post.created_at,
-        updatedAt: post.updated_at,
+        createdAt: new Date(post.created_at),
+        updatedAt: new Date(post.updated_at),
       })),
     };
   }
@@ -99,101 +123,108 @@ export const list = api<void, ListPostsResponse>(
 
 // Updates an existing post
 export const update = api<UpdatePostRequest, Post>(
-  { auth: true, expose: true, method: "PUT", path: "/posts/:id" },
-  async (req) => {
-    const auth = getAuthData()!;
+  { expose: true, method: "PUT", path: "/posts/:id" },
+  async (req, { headers }) => {
+    const userId = await getUserFromToken(headers.authorization);
+
+    const supabase = getSupabase();
 
     // Check if post exists and belongs to user
-    const existingPost = await db.queryRow`
-      SELECT id FROM posts WHERE id = ${req.id} AND user_id = ${auth.userID}
-    `;
+    const { data: existingPost, error: fetchError } = await supabase
+      .from("posts")
+      .select("id")
+      .eq("id", req.id)
+      .eq("user_id", userId)
+      .single();
 
-    if (!existingPost) {
+    if (fetchError || !existingPost) {
       throw APIError.notFound("post not found");
     }
 
-    // Build update query dynamically
-    const updates: string[] = [];
-    const values: any[] = [];
+    // Build update object
+    const updates: any = {
+      updated_at: new Date().toISOString(),
+    };
 
     if (req.content !== undefined) {
-      updates.push(`content = $${values.length + 1}`);
-      values.push(req.content);
+      updates.content = req.content;
     }
 
     if (req.coverImage !== undefined) {
-      updates.push(`cover_image = $${values.length + 1}`);
-      values.push(req.coverImage);
+      updates.cover_image = req.coverImage;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updates).length === 1) {
       throw APIError.invalidArgument("no fields to update");
     }
 
-    updates.push(`updated_at = NOW()`);
+    const { data, error } = await supabase
+      .from("posts")
+      .update(updates)
+      .eq("id", req.id)
+      .eq("user_id", userId)
+      .select()
+      .single();
 
-    const post = await db.queryRow<{
-      id: string;
-      content: string;
-      cover_image: string | null;
-      created_at: Date;
-      updated_at: Date;
-    }>(
-      `UPDATE posts SET ${updates.join(", ")} WHERE id = $${values.length + 1} AND user_id = $${values.length + 2} RETURNING id, content, cover_image, created_at, updated_at`,
-      ...values,
-      req.id,
-      auth.userID
-    );
-
-    if (!post) {
-      throw APIError.internal("failed to update post");
+    if (error) {
+      throw APIError.internal("failed to update post: " + error.message);
     }
 
     return {
-      id: post.id,
-      content: post.content,
-      coverImage: post.cover_image,
-      createdAt: post.created_at,
-      updatedAt: post.updated_at,
+      id: data.id,
+      content: data.content,
+      coverImage: data.cover_image,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
     };
   }
 );
 
 // Deletes a post
 export const remove = api<{ id: string }, void>(
-  { auth: true, expose: true, method: "DELETE", path: "/posts/:id" },
-  async (req) => {
-    const auth = getAuthData()!;
+  { expose: true, method: "DELETE", path: "/posts/:id" },
+  async (req, { headers }) => {
+    const userId = await getUserFromToken(headers.authorization);
 
-    const result = await db.exec`
-      DELETE FROM posts WHERE id = ${req.id} AND user_id = ${auth.userID}
-    `;
+    const supabase = getSupabase();
 
-    // Note: Encore doesn't provide affected rows count, so we can't check if the post was actually deleted
-    // The operation will succeed even if the post didn't exist
+    const { error } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", req.id)
+      .eq("user_id", userId);
+
+    if (error) {
+      throw APIError.internal("failed to delete post: " + error.message);
+    }
   }
 );
 
 // Saves autosave data
 export const autosave = api<CreatePostRequest, { success: boolean }>(
-  { auth: true, expose: true, method: "POST", path: "/posts/autosave" },
-  async (req) => {
-    const auth = getAuthData()!;
+  { expose: true, method: "POST", path: "/posts/autosave" },
+  async (req, { headers }) => {
+    const userId = await getUserFromToken(headers.authorization);
 
     if (!req.content?.trim()) {
       return { success: true }; // Skip empty content
     }
 
-    // Delete existing autosave
-    await db.exec`
-      DELETE FROM autosaves WHERE user_id = ${auth.userID}
-    `;
+    const supabase = getSupabase();
 
-    // Create new autosave
-    await db.exec`
-      INSERT INTO autosaves (user_id, content, cover_image, created_at)
-      VALUES (${auth.userID}, ${req.content}, ${req.coverImage || null}, NOW())
-    `;
+    // Upsert autosave data
+    const { error } = await supabase
+      .from("autosaves")
+      .upsert({
+        user_id: userId,
+        content: req.content,
+        cover_image: req.coverImage || null,
+        created_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      throw APIError.internal("failed to save autosave: " + error.message);
+    }
 
     return { success: true };
   }
@@ -206,30 +237,32 @@ interface GetAutosaveResponse {
 
 // Gets autosave data
 export const getAutosave = api<void, GetAutosaveResponse>(
-  { auth: true, expose: true, method: "GET", path: "/posts/autosave" },
-  async () => {
-    const auth = getAuthData()!;
+  { expose: true, method: "GET", path: "/posts/autosave" },
+  async (_, { headers }) => {
+    const userId = await getUserFromToken(headers.authorization);
 
-    const autosaveData = await db.queryRow<{
-      content: string;
-      cover_image: string | null;
-      created_at: Date;
-    }>`
-      SELECT content, cover_image, created_at
-      FROM autosaves
-      WHERE user_id = ${auth.userID}
-    `;
+    const supabase = getSupabase();
 
-    if (!autosaveData) {
+    const { data, error } = await supabase
+      .from("autosaves")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw APIError.internal("failed to fetch autosave: " + error.message);
+    }
+
+    if (!data) {
       return {};
     }
 
     const post: Post = {
       id: "autosave",
-      content: autosaveData.content,
-      coverImage: autosaveData.cover_image,
-      createdAt: autosaveData.created_at,
-      updatedAt: autosaveData.created_at,
+      content: data.content,
+      coverImage: data.cover_image,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.created_at),
     };
 
     return { post };

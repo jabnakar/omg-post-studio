@@ -1,6 +1,6 @@
 # Deployment Guide: Hostinger VPS + Supabase
 
-This guide will help you deploy the OMG Post Studio to your Hostinger VPS using Supabase as the database.
+This guide will help you deploy the OMG Post Studio to your Hostinger VPS using Supabase as the database and authentication provider.
 
 ## Prerequisites
 
@@ -13,13 +13,69 @@ This guide will help you deploy the OMG Post Studio to your Hostinger VPS using 
 
 1. Go to [Supabase](https://supabase.com) and create a new project
 2. Go to Settings > Database and copy your connection string
-3. In the SQL Editor, run the migration files to create tables:
-   - Copy contents from `backend/auth/migrations/1_create_users.up.sql`
-   - Copy contents from `backend/posts/migrations/1_create_posts.up.sql`
-4. Note down your:
-   - Database URL (connection string)
+3. In the SQL Editor, run the following SQL to create the required tables:
+
+```sql
+-- Create posts table
+CREATE TABLE posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  cover_image TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create autosaves table
+CREATE TABLE autosaves (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  cover_image TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+CREATE INDEX idx_posts_updated_at ON posts(updated_at);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE autosaves ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for posts table
+CREATE POLICY "Users can view their own posts" ON posts
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own posts" ON posts
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own posts" ON posts
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own posts" ON posts
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Create policies for autosaves table
+CREATE POLICY "Users can view their own autosaves" ON autosaves
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own autosaves" ON autosaves
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own autosaves" ON autosaves
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own autosaves" ON autosaves
+  FOR DELETE USING (auth.uid() = user_id);
+```
+
+4. Go to Settings > API and note down your:
    - Project URL
-   - API Keys (anon and service_role)
+   - API Keys (anon/public and service_role)
+
+5. Go to Authentication > Settings and:
+   - Enable email authentication
+   - Configure your site URL if needed
 
 ## Step 2: VPS Initial Setup
 
@@ -61,8 +117,8 @@ This guide will help you deploy the OMG Post Studio to your Hostinger VPS using 
 
 4. **Configure your .env file:**
    ```env
-   DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
-   JWT_SECRET=your-super-secret-jwt-key-here-make-it-long-and-random
+   SUPABASE_URL=https://[PROJECT_REF].supabase.co
+   SUPABASE_SERVICE_KEY=your-supabase-service-role-key
    NODE_ENV=production
    ```
 
@@ -130,9 +186,14 @@ sudo certbot renew && docker-compose -f deployment/docker-compose.yml restart ng
 ## Troubleshooting
 
 ### Database Connection Issues
-- Verify your Supabase DATABASE_URL is correct
-- Check if your VPS IP is allowed in Supabase network settings
-- Ensure the database tables exist
+- Verify your Supabase URL and service key are correct
+- Ensure the database tables exist with the correct schema
+- Check that RLS policies are properly configured
+
+### Authentication Issues
+- Make sure you're using the correct Supabase project
+- Verify that email authentication is enabled in Supabase
+- Check that the service role key has the necessary permissions
 
 ### SSL Issues
 - Make sure your domain is pointed to the VPS IP
@@ -182,8 +243,8 @@ sudo certbot renew && docker-compose -f deployment/docker-compose.yml restart ng
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `DATABASE_URL` | Supabase PostgreSQL connection string | `postgresql://postgres:password@db.project.supabase.co:5432/postgres` |
-| `JWT_SECRET` | Secret key for JWT tokens | `your-super-secret-key-here` |
+| `SUPABASE_URL` | Supabase project URL | `https://[PROJECT_REF].supabase.co` |
+| `SUPABASE_SERVICE_KEY` | Supabase service role key | `your-service-role-key` |
 | `NODE_ENV` | Node environment | `production` |
 
 ## Support
@@ -191,7 +252,7 @@ sudo certbot renew && docker-compose -f deployment/docker-compose.yml restart ng
 If you encounter issues:
 1. Check the troubleshooting section above
 2. Review application logs
-3. Verify your configuration files
+3. Verify your Supabase configuration
 4. Ensure all prerequisites are met
 
-Remember to replace placeholder values (domain names, secrets, etc.) with your actual values before deployment.
+Remember to replace placeholder values (domain names, Supabase keys, etc.) with your actual values before deployment.
