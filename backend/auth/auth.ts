@@ -3,7 +3,7 @@ import { authHandler } from "encore.dev/auth";
 import { secret } from "encore.dev/config";
 import { SQLDatabase } from "encore.dev/storage/sqldb";
 import * as bcrypt from "bcrypt";
-import * as jwt from "jsonwebtoken";
+import { sign, verify } from "jsonwebtoken";
 
 // Shared database - define it only once
 const db = new SQLDatabase("app", {
@@ -33,7 +33,7 @@ const auth = authHandler<AuthParams, AuthData>(
     }
 
     try {
-      const decoded = jwt.verify(token, jwtSecret()) as any;
+      const decoded = verify(token, jwtSecret()) as any;
       return {
         userID: decoded.userID,
         email: decoded.email,
@@ -97,7 +97,7 @@ export const register = api<RegisterRequest, AuthResponse>(
     }
 
     // Generate JWT token
-    const token = jwt.sign(
+    const token = sign(
       { userID: user.id, email },
       jwtSecret(),
       { expiresIn: "7d" }
@@ -148,7 +148,7 @@ export const login = api<LoginRequest, AuthResponse>(
     }
 
     // Generate JWT token
-    const token = jwt.sign(
+    const token = sign(
       { userID: user.id, email: user.email },
       jwtSecret(),
       { expiresIn: "7d" }
