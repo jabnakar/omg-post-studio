@@ -5,8 +5,8 @@ import { SQLDatabase } from "encore.dev/storage/sqldb";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
 
-// Database setup
-const db = new SQLDatabase("auth", {
+// Shared database - define it only once
+const db = new SQLDatabase("app", {
   migrations: "./migrations",
 });
 

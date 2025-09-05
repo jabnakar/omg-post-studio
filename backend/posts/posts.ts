@@ -2,10 +2,8 @@ import { api, APIError } from "encore.dev/api";
 import { SQLDatabase } from "encore.dev/storage/sqldb";
 import { getAuthData } from "~encore/auth";
 
-// Database setup
-const db = new SQLDatabase("posts", {
-  migrations: "./migrations",
-});
+// Reference the same database that auth service created
+const db = SQLDatabase.named("app");
 
 // Post interface
 export interface Post {
