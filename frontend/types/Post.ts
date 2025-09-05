@@ -4,6 +4,9 @@ export interface Post {
   content: string;
   coverImage: string | null;
   timestamp: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+  isAutosave?: boolean;
 }
 
 export function createEmptyPost(): Post {

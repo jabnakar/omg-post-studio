@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Clock, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Clock, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Post } from '../types/Post';
 
@@ -7,17 +7,49 @@ interface LoadModalProps {
   posts: Post[];
   autosavedPost: Post | null;
   onLoad: (post: Post) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
   onClose: () => void;
+  isLoading: boolean;
+  getAllPosts: () => Promise<Post[]>;
+  loadAutosave: () => Promise<Post | null>;
 }
 
-export function LoadModal({ posts, autosavedPost, onLoad, onDelete, onClose }: LoadModalProps) {
+export function LoadModal({ 
+  onLoad, 
+  onDelete, 
+  onClose, 
+  getAllPosts,
+  loadAutosave 
+}: LoadModalProps) {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [autosavedPost, setAutosavedPost] = useState<Post | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [postsData, autosaveData] = await Promise.all([
+          getAllPosts(),
+          loadAutosave()
+        ]);
+        setPosts(postsData);
+        setAutosavedPost(autosaveData);
+      } catch (error) {
+        console.error('Failed to load posts:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [getAllPosts, loadAutosave]);
+
   const allPosts = [
     ...(autosavedPost ? [{ ...autosavedPost, isAutosave: true }] : []),
-    ...posts.filter(p => p.id !== 'post_autosave')
-  ].sort((a, b) => b.timestamp - a.timestamp);
+    ...posts
+  ].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: string | Date) => {
     return new Date(timestamp).toLocaleString();
   };
 
@@ -45,7 +77,12 @@ export function LoadModal({ posts, autosavedPost, onLoad, onDelete, onClose }: L
 
         {/* Content */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-          {allPosts.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p className="text-gray-500 font-inter">Loading posts...</p>
+            </div>
+          ) : allPosts.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 font-inter">No saved posts found.</p>
             </div>
@@ -86,7 +123,7 @@ export function LoadModal({ posts, autosavedPost, onLoad, onDelete, onClose }: L
                       </p>
                       
                       <p className="text-xs text-gray-500 font-inter">
-                        {formatDate(post.timestamp)}
+                        {formatDate(post.updatedAt || post.createdAt)}
                       </p>
                     </div>
                     
@@ -98,14 +135,16 @@ export function LoadModal({ posts, autosavedPost, onLoad, onDelete, onClose }: L
                       >
                         Load
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onDelete(post.id)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {!post.isAutosave && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onDelete(post.id)}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
