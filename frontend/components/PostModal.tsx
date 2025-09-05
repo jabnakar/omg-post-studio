@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { X, Heart, MessageCircle, Share, Bookmark, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Post } from '../types/Post';
@@ -17,10 +17,19 @@ export function PostModal({ post, onClose }: PostModalProps) {
 
   const displayContent = stripHtml(post.content) || 'This is a sample post to show how your content will look when expanded.';
 
-  // Generate random engagement numbers
-  const likes = Math.floor(Math.random() * 500) + 10;
-  const comments = Math.floor(Math.random() * 50) + 1;
-  const shares = Math.floor(Math.random() * 20) + 1;
+  // Generate consistent engagement numbers based on post ID
+  const engagement = useMemo(() => {
+    const hash = post.id.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    return {
+      likes: Math.abs(hash % 500) + 10,
+      comments: Math.abs(hash % 50) + 1,
+      shares: Math.abs(hash % 20) + 1
+    };
+  }, [post.id]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -68,18 +77,18 @@ export function PostModal({ post, onClose }: PostModalProps) {
             <div className="flex items-center justify-between text-gray-500">
               <div className="flex items-center space-x-2">
                 <div className="flex items-center -space-x-1">
-                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border border-white">
-                    <Heart className="w-3 h-3 text-white fill-current" />
+                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center border border-white">
+                    <Heart className="w-2.5 h-2.5 text-white fill-current" />
                   </div>
-                  <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border border-white">
-                    <Heart className="w-3 h-3 text-white fill-current" />
+                  <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-white">
+                    <Heart className="w-2.5 h-2.5 text-white fill-current" />
                   </div>
                 </div>
-                <span className="text-sm font-inter">{likes}</span>
+                <span className="text-xs font-inter">{engagement.likes}</span>
               </div>
-              <div className="flex items-center space-x-4 text-sm font-inter">
-                <span>{comments} comments</span>
-                <span>{shares} shares</span>
+              <div className="flex items-center space-x-3 text-xs font-inter">
+                <span>{engagement.comments} comments</span>
+                <span>{engagement.shares} shares</span>
               </div>
             </div>
           </div>
@@ -88,17 +97,17 @@ export function PostModal({ post, onClose }: PostModalProps) {
         {/* Action Buttons */}
         <div className="border-t border-gray-100">
           <div className="flex">
-            <button className="flex-1 flex items-center justify-center py-3 hover:bg-gray-50 transition-colors">
-              <Heart className="w-5 h-5 text-gray-600 mr-2" />
-              <span className="text-gray-700 font-inter font-medium">Like</span>
+            <button className="flex-1 flex items-center justify-center py-2.5 hover:bg-gray-50 transition-colors">
+              <Heart className="w-4 h-4 text-gray-600 mr-1.5" />
+              <span className="text-gray-700 font-inter font-medium text-sm">Like</span>
             </button>
-            <button className="flex-1 flex items-center justify-center py-3 hover:bg-gray-50 transition-colors">
-              <MessageCircle className="w-5 h-5 text-gray-600 mr-2" />
-              <span className="text-gray-700 font-inter font-medium">Comment</span>
+            <button className="flex-1 flex items-center justify-center py-2.5 hover:bg-gray-50 transition-colors">
+              <MessageCircle className="w-4 h-4 text-gray-600 mr-1.5" />
+              <span className="text-gray-700 font-inter font-medium text-sm">Comment</span>
             </button>
-            <button className="flex-1 flex items-center justify-center py-3 hover:bg-gray-50 transition-colors">
-              <Share className="w-5 h-5 text-gray-600 mr-2" />
-              <span className="text-gray-700 font-inter font-medium">Share</span>
+            <button className="flex-1 flex items-center justify-center py-2.5 hover:bg-gray-50 transition-colors">
+              <Share className="w-4 h-4 text-gray-600 mr-1.5" />
+              <span className="text-gray-700 font-inter font-medium text-sm">Share</span>
             </button>
           </div>
         </div>

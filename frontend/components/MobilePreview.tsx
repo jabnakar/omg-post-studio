@@ -54,11 +54,11 @@ export function MobilePreview({ currentPost, onCardClick }: MobilePreviewProps) 
   const feedPosts = createFeed();
 
   return (
-    <div className="h-full bg-gray-100 p-4">
-      <div className="mx-auto max-w-xs">
+    <div className="h-full bg-gray-100 p-2 md:p-4">
+      <div className="mx-auto max-w-xs md:max-w-xs">
         {/* Phone Frame */}
         <div className="bg-black rounded-[2.5rem] p-2 shadow-2xl">
-          <div className="bg-white rounded-[2rem] h-[600px] overflow-hidden">
+          <div className="bg-white rounded-[2rem] h-[600px] md:h-[600px] overflow-hidden">
             {/* Status Bar */}
             <div className="bg-gray-50 h-6 flex items-center justify-between px-4 text-xs text-gray-600">
               <span>9:41</span>
